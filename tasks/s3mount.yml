@@ -1,0 +1,72 @@
+---
+
+- name: Install dependencies
+  yum:
+    name: "{{ item }}"
+    state: present
+    update_cache: yes
+  with_items:
+    - openssl-devel
+    - gcc
+    - libstdc++-devel
+    - gcc-c++
+    - fuse
+    - fuse-devel
+    - curl-devel
+    - libxml2-devel
+    - mailcap
+    - git
+    - automake
+
+- name: Copy fuse files
+  template:
+    src: "{{ item.source }}"
+    dest: "{{ item.destination }}"
+    force: true
+  with_items:
+    - { source: "etc/fuse.conf.j2", destination: "/etc/fuse.conf"}
+
+- name: Download fuse s3fs
+  unarchive:
+    copy: no
+    src: https://github.com/s3fs-fuse/s3fs-fuse/archive/refs/tags/v{{ S3FS_VERSION }}.tar.gz
+    dest: /tmp
+
+- name: Build s3fs
+  shell: "cd /tmp/s3fs-fuse-{{ S3FS_VERSION }} && ./autogen.sh && ./configure && make"
+  changed_when: False
+
+- name: Install s3fs
+  shell: "cd /tmp/s3fs-fuse-{{ S3FS_VERSION }} && make install"
+  args:
+    creates: "/usr/local/bin/s3fs"
+
+- name: Create mountpoints in mnt directory
+  become: yes
+  file:
+    path: "/mnt/{{ item.mount_point }}"
+    state: directory
+  with_items:
+    - "{{ S3BUCKET_LIST }}"
+  no_log: True
+
+- name: Create S3 credential files
+  copy:
+    dest: "/etc/s3fs-{{ item.mount_point }}"
+    mode: "0600"
+    content: |
+      {{ item.iam_user }}:{{ item.iam_key }}
+  with_items:
+    - "{{ S3BUCKET_LIST }}"
+  no_log: True
+
+- name: Mount buckets
+  ansible.posix.mount:
+    path: "/mnt/{{ item.mount_point }}"
+    src: "{{ item.bucket }}"
+    opts: "_netdev,allow_other,passwd_file=/etc/s3fs-{{ item.mount_point }}"
+    state: mounted
+    fstype: fuse.s3fs
+  with_items:
+    - "{{ S3BUCKET_LIST }}"
+  no_log: True

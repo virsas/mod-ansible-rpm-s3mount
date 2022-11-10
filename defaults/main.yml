@@ -1,0 +1,8 @@
+---
+# Rewritable vars
+
+
+S3FS_VERSION: "1.91"
+S3BUCKET_LIST:
+  - { bucket: bucket1, mount_owner: "root", mount_group: "root", mount_mode: "0770", mount_point: "mount1", iam_user: "AKAIXXXXXXXXX1", iam_key: "XXXXXXXXXXXXXXXXXXX" }
+  - { bucket: bucket2, mount_owner: "root", mount_group: "root", mount_mode: "0770", mount_point: "mount2", iam_user: "AKAIXXXXXXXXX2", iam_key: "XXXXXXXXXXXXXXXXXXX" }
